@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 void main() {
   runApp(const MyApp());
 }
@@ -75,6 +76,12 @@ class HomePage extends StatelessWidget {
       'title': 'Events',
       'icon': Icons.event,
       'colors': [Color(0xFF56AB2F), Color(0xFFA8E063)],
+    },
+
+    {
+      'title': 'Todo API',
+      'icon': Icons.api,
+      'colors': [Color(0xFF673AB7), Color(0xFF512DA8)]
     },
   ];
 
@@ -190,7 +197,16 @@ class HomePage extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CategoryPage(title: item['title']),
+                            builder: (_) {
+
+                            if (item['title'] == 'Todo API') {
+                              return const TodoPage();
+                            }
+
+                            return CategoryPage(
+                              title: item['title'],
+                            );
+                          },
                           ),
                         );
                       },
@@ -380,6 +396,123 @@ class CategoryPage extends StatelessWidget {
           "Halaman $title",
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
         ),
+      ),
+    );
+  }
+}
+
+class TodoPage extends StatefulWidget {
+  const TodoPage({super.key});
+
+  @override
+  State<TodoPage> createState() => _TodoPageState();
+}
+
+class _TodoPageState extends State<TodoPage> {
+
+  Future<List<dynamic>> fetchTodos() async {
+
+    final response = await http.get(
+      Uri.parse(
+        'https://jsonplaceholder.typicode.com/todos/',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+
+      return jsonDecode(response.body);
+
+    } else {
+
+      throw Exception('Failed to load data');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+
+      appBar: AppBar(
+        title: const Text("Todo API"),
+      ),
+
+      body: FutureBuilder<List<dynamic>>(
+
+        future: fetchTodos(),
+
+        builder: (context, snapshot) {
+
+          // LOADING
+          if (snapshot.connectionState ==
+              ConnectionState.waiting) {
+
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          // ERROR
+          if (snapshot.hasError) {
+
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+              ),
+            );
+          }
+
+          // DATA
+          final todos = snapshot.data!;
+
+          return ListView.builder(
+
+            itemCount: todos.length,
+
+            itemBuilder: (context, index) {
+
+              final todo = todos[index];
+
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+
+                child: ListTile(
+
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        todo['completed']
+                            ? Colors.green
+                            : Colors.orange,
+
+                    child: Icon(
+                      todo['completed']
+                          ? Icons.check
+                          : Icons.pending,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  title: Text(
+                    todo['title'],
+                  ),
+
+                  subtitle: Text(
+                    'Todo ID: ${todo['id']}',
+                  ),
+
+                  trailing: Text(
+                    todo['completed']
+                        ? 'Done'
+                        : 'Pending',
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
